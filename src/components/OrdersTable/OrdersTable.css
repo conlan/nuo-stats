@@ -1,0 +1,21 @@
+.OrdersTable {
+	margin-top:20px;
+	  margin-left:20px; 
+  width: calc(100% - 40px);
+}
+
+.center {
+  text-align: center;
+}
+
+.right {
+  text-align: right;
+}
+
+div.rt-tr {
+  align-items: center;
+}
+
+.ReactTable {
+  
+}

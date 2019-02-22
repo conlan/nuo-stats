@@ -3,50 +3,91 @@ import './App.css';
 
 import { useWeb3Context } from 'web3-react'
 
+import OrdersTable from "./components/OrdersTable/index.js";
+import Footer from "./components/Footer/index.js";
+
 const NuoConstants = require('./constants/Nuo.js');
 
 var kernelOrders;
 
+var currentProgress = "";
+
 var web3 = null;
 var app = null;
+
+function TokenSymbol(address) {
+  return NuoConstants.TOKEN_DATA[address].Symbol;
+}
+
+function TokenDecimals(address) {
+  return NuoConstants.TOKEN_DATA[address].Decimals;
+}
+
+function ParseDate(timestamp) {
+  var date = new Date(timestamp * 1000);
+
+  var month = date.getMonth() + 1;
+  if (month < 10) {
+    month = "0" + month;
+  }
+
+  var day = date.getDate();
+  if (day < 10) {
+    day = "0" + day;
+  }
+
+  return month + "-" + day + "-" + date.getFullYear();
+}
 
 async function LoadOpenOrders() {
   var kernelContract = new web3.eth.Contract(NuoConstants.KERNEL_ABI, NuoConstants.KERNEL_ADDRESS);
 
   var allOrdersRaw = await kernelContract.methods.getAllOrders().call();
 
+  allOrdersRaw.reverse();
+
   console.log("Received " + allOrdersRaw.length + " orders");
 
-  var DAI = 0;
-  var totalLoans = 0;
+  var orderList = [];
 
   for (var i = 0; i < allOrdersRaw.length; i++) {
     var order = await kernelContract.methods.getOrder(allOrdersRaw[i]).call();
 
-    var account = order["_account"];
-    var user = order["_byUser"];
-    var collateralAmount = order["_collateralAmount"];
-    var collateralToken = order["_collateralToken"];
-    var createdTime = order["_createdTimestamp"];
-    var expirationTime = order["_expirationTimestamp"];
-    var premium = order["_premium"];
-    var principalAmount = order["_principalAmount"];
-    var principalToken = order["_principalToken"];
+    currentProgress = "(" + i + " / " + allOrdersRaw.length + ")";
 
-    if (principalToken == "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2") {
-      DAI += (premium / 1e18);
-      console.log(premium / 1e18);
-      totalLoans+=1;
-    }
+    var createdTimestamp = order["_createdTimestamp"];    
+    var creationDate = ParseDate(createdTimestamp);
 
-    console.log("-->" + i);
-    break;
+    var expiredTimestamp = order["_expirationTimestamp"];    
+    var expiredDate = ParseDate(expiredTimestamp);
+
+    var collateralAddress = order["_collateralToken"];
+    var collateralDecimals = TokenDecimals(collateralAddress)
+    var collateralAmount = parseFloat((order["_collateralAmount"] / 10**collateralDecimals).toFixed(4));    
+
+    var principalAddress = order["_principalToken"];
+    var principalDecimals = TokenDecimals(principalAddress);
+    var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
+    var premium = ((order["_premium"] / 1e17) * 100).toFixed(2) + "%";
+
+    orderList.push({
+      account : order["_account"],
+      user : order["_byUser"],
+      collateralAmount : collateralAmount,
+      collateralToken : TokenSymbol(collateralAddress),
+      createdTime : creationDate,
+      expirationTime : expiredDate,
+      premium : premium,
+      principalAmount : principalAmount,
+      principalToken : TokenSymbol(principalAddress)
+    });
+
+    app.setState({});
+
+    console.log(order);
   }
 
-  console.log(totalLoans);
-  console.log(DAI);
-
-  kernelOrders = [];
+  kernelOrders = orderList;
   
   app.setState({});
 }
@@ -74,13 +115,19 @@ function App(props) {
   if (kernelOrders === undefined) {
     return (
       <div>
-      <p>Loading...</p>
+        <p><b>Reserves</b></p>
+        <p><b>Loans</b></p>
+        <p>Loading Loans... {currentProgress}</p>
+        <Footer/>
       </div>
     )
   } else {
     return (
       <div>
-      <p>Done</p>
+        <p><b>Reserves</b></p>
+        <p><b>Loans</b></p>
+        <OrdersTable orders={kernelOrders}/>
+        <Footer/>
       </div>
     )
   }

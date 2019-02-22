@@ -2,6 +2,9 @@ import React, { Component } from "react";
 import { render } from "react-dom";
 import Web3Provider, { Connectors } from "web3-react";
 import App from "./App.js"
+import './index.css';
+
+const InfuraConstants = require('./constants/Infura.js');
 
 const {
   MetaMaskConnector,
@@ -11,7 +14,7 @@ const {
 const MetaMask = new MetaMaskConnector();
 
 const Infura = new NetworkOnlyConnector({
-  providerURL: "https://mainnet.infura.io/v3/3f0fa5d9c4064d6e8427efac291d66df"
+  providerURL: InfuraConstants.URL
 });
 
 const connectors = { MetaMask, Infura };
