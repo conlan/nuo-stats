@@ -18,7 +18,10 @@ var app = null;
 var loadingState = "";
 
 var activeLoanBalances = {}
+var expectedPremiumRepays = {}
+
 var activeLoanText = " "
+var expectedPremiumRepayText = "";
 
 function TokenSymbol(address) {
   return NuoConstants.TOKEN_DATA[address].Symbol;
@@ -28,22 +31,32 @@ function TokenDecimals(address) {
   return NuoConstants.TOKEN_DATA[address].Decimals;
 }
 
-function UpdateActiveLoanText() {
-	var sb = [];
+function UpdateActiveLoanAndRepayText() {
+	var loanBalanceSB = [];
+	var expectedPremiumRepaySB = [];
 
 	Object.keys(activeLoanBalances).forEach(function(token) {
-		sb.push(activeLoanBalances[token].toFixed(2));
-		sb.push(" ");
-		sb.push(token);
-		sb.push(" - ");
+		loanBalanceSB.push(activeLoanBalances[token].toFixed(2));
+		loanBalanceSB.push(" ");
+		loanBalanceSB.push(token);
+		loanBalanceSB.push(" - ");
+
+
+		expectedPremiumRepaySB.push(token);
+		expectedPremiumRepaySB.push(" - " );
 	});
 
 	// delete trailing comma if found
-	if (sb.length > 0) {
-		delete sb[sb.length - 1];
+	if (loanBalanceSB.length > 0) {
+		delete loanBalanceSB[loanBalanceSB.length - 1];		
 	}
 
-	activeLoanText = sb.join("");
+	if (expectedPremiumRepaySB.length > 0) {
+		delete expectedPremiumRepaySB[expectedPremiumRepaySB.length - 1];
+	}
+
+	activeLoanText = loanBalanceSB.join("");
+	expectedPremiumRepayText = expectedPremiumRepaySB.join("");
 }
 
 function ParseDate(timestamp) {
@@ -123,7 +136,7 @@ async function LoadOpenOrders() {
 
     console.log(order);
 
-    // if (i > 10) break; // TODO remove
+    if (i > 10) break; // TODO remove
   }
 
   loadingState = "";
@@ -154,7 +167,13 @@ async function LoadOrderStatuses() {
 	if ((isRepaid == false) && (isDefaulted == false)) {		
 		activeLoanBalances[order.principalToken] = activeLoanBalances[order.principalToken] + order.principalAmount;
 
-		UpdateActiveLoanText();
+		var expectedPremium = order.premium * order.principalAmount;
+
+		console.log(order.premium);
+
+		expectedPremiumRepays[order.principalToken] = expectedPremiumRepays[order.principalToken] + expectedPremium;
+
+		UpdateActiveLoanAndRepayText();
 	}
 
     app.setState({});
@@ -198,13 +217,15 @@ function App(props) {
     return (
       <div>
         <p><b>Reserves</b></p>                
-        <p class="center"><b>Total Active Loans:</b></p>
+        <p className="center"><b>Total Active Loans:</b></p>
         
-        <p class="center">{activeLoanText}</p>        
+        <p className="center">{activeLoanText}</p>
         
-        <p class="center"><b>Expected Premium Repay:</b></p>
+        <p className="center"><b>Expected Premium Repay:</b></p>
 
-        <p class="center"><i>{loadingState}</i></p>
+        <p className="center">{expectedPremiumRepayText}</p>
+
+        <p className="center"><i>{loadingState}</i></p>
 
         <OrdersTable orders={kernelOrders}/>
         <Footer/>
