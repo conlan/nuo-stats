@@ -1,0 +1,26 @@
+self.__precacheManifest = [
+  {
+    "revision": "b3aedb798f5e11dc0231",
+    "url": "/nuo-stats/static/js/runtime~main.b3aedb79.js"
+  },
+  {
+    "revision": "796d1e0319f5e8853dc4",
+    "url": "/nuo-stats/static/js/main.796d1e03.chunk.js"
+  },
+  {
+    "revision": "931b8043da341b84d50a",
+    "url": "/nuo-stats/static/js/2.931b8043.chunk.js"
+  },
+  {
+    "revision": "796d1e0319f5e8853dc4",
+    "url": "/nuo-stats/static/css/main.f27eeee2.chunk.css"
+  },
+  {
+    "revision": "931b8043da341b84d50a",
+    "url": "/nuo-stats/static/css/2.6dccdfd1.chunk.css"
+  },
+  {
+    "revision": "d088546423a9d34bae6da03582359405",
+    "url": "/nuo-stats/index.html"
+  }
+];
