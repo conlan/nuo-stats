@@ -48,10 +48,12 @@ async function LoadOpenOrders() {
 
   console.log("Received " + allOrdersRaw.length + " orders");
 
-  var orderList = [];
+  kernelOrders = [];
 
   for (var i = 0; i < allOrdersRaw.length; i++) {
-    var order = await kernelContract.methods.getOrder(allOrdersRaw[i]).call();
+    var orderId = allOrdersRaw[i];
+
+    var order = await kernelContract.methods.getOrder(orderId).call();
 
     currentProgress = "(" + i + " / " + allOrdersRaw.length + ")";
 
@@ -70,16 +72,19 @@ async function LoadOpenOrders() {
     var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
     var premium = ((order["_premium"] / 1e17) * 100).toFixed(2) + "%";
 
-    orderList.push({
+    kernelOrders.push({
+      id : orderId,
       account : order["_account"],
       user : order["_byUser"],
       collateralAmount : collateralAmount,
       collateralToken : TokenSymbol(collateralAddress),
       createdTime : creationDate,
       expirationTime : expiredDate,
+      rawExpirationTime : expiredTimestamp,
       premium : premium,
       principalAmount : principalAmount,
-      principalToken : TokenSymbol(principalAddress)
+      principalToken : TokenSymbol(principalAddress),
+      status : "-",
     });
 
     app.setState({});
@@ -87,8 +92,30 @@ async function LoadOpenOrders() {
     console.log(order);
   }
 
-  kernelOrders = orderList;
-  
+  app.setState({});
+
+  LoadOrderStatuses();
+}
+
+async function LoadOrderStatuses() {
+  var kernelContract = new web3.eth.Contract(NuoConstants.KERNEL_ABI, NuoConstants.KERNEL_ADDRESS);
+
+  // var utcNow = (Date.now() / 1000);
+
+  for (var i = 0; i < kernelOrders.length; i++) {
+    var order = kernelOrders[i];
+    
+    var isRepaid = await kernelContract.methods.isRepaid(order.id).call();
+
+    if (isRepaid === false) {
+      var isDefaulted = await kernelContract.methods.isDefaulted(order.id).call();
+    }
+
+    order["status"] = isRepaid ? "Repaid" : isDefaulted ? "Default" : "Active";
+
+    app.setState({});
+  }
+
   app.setState({});
 }
 

@@ -27,7 +27,7 @@ function OrdersTable(props) {
       principalAmount : order.principalAmount,
 
       premium : order.premium,
-      status : "TBD"
+      status : order.status
     })
   });
 
@@ -91,7 +91,26 @@ function OrdersTable(props) {
     {
       Header: "Status",
       accessor: "status",
-      className: "center"    
+      maxWidth: 100,
+      Cell: row => (
+        <span>
+          <span
+            style={{
+              color:
+                row.value === "Repaid"
+                  ? "#3498db"
+                  : row.value === "Active"
+                  ? "#62cb31"
+                  : row.value === "Default"
+                  ? "#e74c3c"
+                  : "#383838"
+            }}
+          >
+            &#x25cf;
+          </span>{" "}
+          {row.value}
+        </span>
+      )  
     }
   ];
 
