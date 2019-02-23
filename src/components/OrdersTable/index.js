@@ -26,7 +26,7 @@ function OrdersTable(props) {
       principalToken : order.principalToken,
       principalAmount : order.principalAmount,
 
-      premium : order.premium,
+      premium : (order.premium * 100).toFixed(2) + "%",
       status : order.status
     })
   });
