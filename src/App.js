@@ -36,12 +36,13 @@ function UpdateActiveLoanAndRepayText() {
 	var expectedPremiumRepaySB = [];
 
 	Object.keys(activeLoanBalances).forEach(function(token) {
-		loanBalanceSB.push(activeLoanBalances[token].toFixed(2));
+		loanBalanceSB.push(activeLoanBalances[token].toFixed(4));
 		loanBalanceSB.push(" ");
 		loanBalanceSB.push(token);
 		loanBalanceSB.push(" - ");
 
-
+		expectedPremiumRepaySB.push(expectedPremiumRepays[token].toFixed(4));
+		expectedPremiumRepaySB.push(" ");
 		expectedPremiumRepaySB.push(token);
 		expectedPremiumRepaySB.push(" - " );
 	});
@@ -114,6 +115,7 @@ async function LoadOpenOrders() {
     // initialize a default 0
     if ((principalToken in activeLoanBalances) == false) {
 		activeLoanBalances[principalToken] = 0;
+		expectedPremiumRepays[principalToken] = 0;
 	}
 
     kernelOrders.push({
@@ -136,7 +138,7 @@ async function LoadOpenOrders() {
 
     console.log(order);
 
-    if (i > 10) break; // TODO remove
+    if (i > 15) break; // TODO remove
   }
 
   loadingState = "";
@@ -167,9 +169,8 @@ async function LoadOrderStatuses() {
 	if ((isRepaid == false) && (isDefaulted == false)) {		
 		activeLoanBalances[order.principalToken] = activeLoanBalances[order.principalToken] + order.principalAmount;
 
+		// add to the expected premium payout
 		var expectedPremium = order.premium * order.principalAmount;
-
-		console.log(order.premium);
 
 		expectedPremiumRepays[order.principalToken] = expectedPremiumRepays[order.principalToken] + expectedPremium;
 
