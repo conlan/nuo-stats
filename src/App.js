@@ -137,8 +137,6 @@ async function LoadOpenOrders() {
     app.setState({});
 
     console.log(order);
-
-    if (i > 15) break; // TODO remove
   }
 
   loadingState = "";
