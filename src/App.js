@@ -4,11 +4,16 @@ import './App.css';
 import { useWeb3Context } from 'web3-react'
 
 import OrdersTable from "./components/OrdersTable/index.js";
+import ReservesTable from "./components/ReservesTable/index.js";
+
 import Footer from "./components/Footer/index.js";
 
 const NuoConstants = require('./constants/Nuo.js');
 
-var kernelOrders;
+var kernelOrders = [];
+
+var reserveBalanceData = [];
+var reserveBalances = {};
 
 var currentProgress = "";
 
@@ -17,11 +22,12 @@ var app = null;
 
 var loadingState = "";
 
-var activeLoanBalances = {}
-var expectedPremiumRepays = {}
+var activeLoanBalances = {};
+var expectedPremiumRepays = {};
 
-var activeLoanText = " "
-var expectedPremiumRepayText = "";
+var activeLoanText = "-"
+var expectedPremiumRepayText = "-";
+var currentReserveROIText = "-";
 
 function TokenSymbol(address) {
   return NuoConstants.TOKEN_DATA[address].Symbol;
@@ -34,17 +40,39 @@ function TokenDecimals(address) {
 function UpdateActiveLoanAndRepayText() {
 	var loanBalanceSB = [];
 	var expectedPremiumRepaySB = [];
+  var currentReserveROISB = [];
 
 	Object.keys(activeLoanBalances).forEach(function(token) {
-		loanBalanceSB.push(activeLoanBalances[token].toFixed(4));
-		loanBalanceSB.push(" ");
-		loanBalanceSB.push(token);
-		loanBalanceSB.push(" - ");
+    var balance = activeLoanBalances[token].toFixed(4);
 
-		expectedPremiumRepaySB.push(expectedPremiumRepays[token].toFixed(4));
-		expectedPremiumRepaySB.push(" ");
-		expectedPremiumRepaySB.push(token);
-		expectedPremiumRepaySB.push(" - " );
+    if (balance > 0) {
+  		loanBalanceSB.push(balance);
+  		loanBalanceSB.push(" ");
+  		loanBalanceSB.push(token);
+  		loanBalanceSB.push(" - ");
+    }
+
+    var repay = expectedPremiumRepays[token].toFixed(4);
+
+    if (repay > 0) {
+  		expectedPremiumRepaySB.push(repay);
+  		expectedPremiumRepaySB.push(" ");
+  		expectedPremiumRepaySB.push(token);
+  		expectedPremiumRepaySB.push(" - " );
+    }
+
+    var currentROI = repay / reserveBalances[token].toFixed(4);
+    currentROI = (currentROI * 100).toFixed(2);
+
+    console.log(reserveBalances);
+
+    if (currentROI > 0) {
+      currentReserveROISB.push(currentROI);
+      currentReserveROISB.push("%");
+      currentReserveROISB.push(" ");
+      currentReserveROISB.push(token);
+      currentReserveROISB.push(" - " ); 
+    }
 	});
 
 	// delete trailing comma if found
@@ -56,24 +84,74 @@ function UpdateActiveLoanAndRepayText() {
 		delete expectedPremiumRepaySB[expectedPremiumRepaySB.length - 1];
 	}
 
+  if (currentReserveROISB.length > 0) {
+    delete currentReserveROISB[currentReserveROISB.length - 1];
+  }
+
 	activeLoanText = loanBalanceSB.join("");
 	expectedPremiumRepayText = expectedPremiumRepaySB.join("");
+  currentReserveROIText = currentReserveROISB.join("");
 }
 
 function ParseDate(timestamp) {
   var date = new Date(timestamp * 1000);
 
-  var month = date.getMonth() + 1;
+  var month = date.getUTCMonth() + 1;
   if (month < 10) {
     month = "0" + month;
   }
 
-  var day = date.getDate();
+  var day = date.getUTCDate();
   if (day < 10) {
     day = "0" + day;
   }
 
-  return month + "-" + day + "-" + date.getFullYear();
+  return month + "-" + day + "-" + date.getUTCFullYear();
+}
+
+async function LoadReserves() {
+  var reserveContract = new web3.eth.Contract(NuoConstants.RESERVE_ABI, NuoConstants.RESERVE_ADDRESS);
+
+  var keys = Object.keys(NuoConstants.TOKEN_DATA);
+
+  reserveBalanceData = [];
+
+  for (var i = 0; i < keys.length; i++) {
+    var token = keys[i];
+
+    loadingState = "(Fetching reserve details for " + TokenSymbol(token) + ")";
+
+    var lastReserveUpdateTime = await reserveContract.methods.lastReserveRuns(token).call();
+
+    var reserveBalanceForToken = await reserveContract.methods.reserves(lastReserveUpdateTime, token).call();
+    reserveBalanceForToken = reserveBalanceForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
+
+    var profitsForToken = await reserveContract.methods.profits(lastReserveUpdateTime, token).call(); 
+    profitsForToken = profitsForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
+
+    var lossesForToken = await reserveContract.methods.losses(lastReserveUpdateTime, token).call(); 
+    lossesForToken = lossesForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
+
+    var reserveBalanceObj = {
+      token : NuoConstants.TOKEN_DATA[token].Symbol,
+      balance : reserveBalanceForToken,
+      lastUpdated : ParseDate(lastReserveUpdateTime),
+      lastUpdatedTimestamp : lastReserveUpdateTime,
+      profits : profitsForToken,
+      losses : lossesForToken
+    };
+
+    console.log(reserveBalanceObj);
+
+    reserveBalanceData.push(reserveBalanceObj);
+    reserveBalances[NuoConstants.TOKEN_DATA[token].Symbol] = reserveBalanceForToken;
+
+    app.setState({});
+  }
+
+  app.setState({});
+
+  LoadOpenOrders();
 }
 
 async function LoadOpenOrders() {
@@ -90,7 +168,7 @@ async function LoadOpenOrders() {
   for (var i = 0; i < allOrdersRaw.length; i++) {
     var orderId = allOrdersRaw[i];
 
-    loadingState = "(State = fetching order " + (i + 1)+ " / " + allOrdersRaw.length + ")";
+    loadingState = "(Fetching loan details " + (i + 1)+ " / " + allOrdersRaw.length + ")";
 
     var order = await kernelContract.methods.getOrder(orderId).call();
 
@@ -152,7 +230,7 @@ async function LoadOrderStatuses() {
   for (var i = 0; i < kernelOrders.length; i++) {
     var order = kernelOrders[i];
 
-    loadingState = "(State = fetching repay status " + (i + 1)+ " / " + kernelOrders.length + ")";
+    loadingState = "(Fetching loan status " + (i + 1)+ " / " + kernelOrders.length + ")";
     
     let isRepaid = await kernelContract.methods.isRepaid(order.id).call();
     let isDefaulted = false;
@@ -198,39 +276,33 @@ function App(props) {
   } else {
     if (web3 === null) {
       web3 = context.library;
-
-      LoadOpenOrders();
+      
+      LoadReserves();
     }
   }
 
-  if (kernelOrders === undefined) {
-    return (
-      <div>
-        <p><b>Reserves</b></p>
-        <p><b>Loans</b></p>
-        <p>Loading Loans... {currentProgress}</p>
-        <Footer/>
-      </div>
-    )
-  } else {
-    return (
-      <div>
-        <p><b>Reserves</b></p>                
-        <p className="center"><b>Total Active Loans:</b></p>
-        
-        <p className="center">{activeLoanText}</p>
-        
-        <p className="center"><b>Expected Premium Repay:</b></p>
+  return (
+    <div>
+      <p><i>{loadingState}</i></p>
 
-        <p className="center">{expectedPremiumRepayText}</p>
+      <p><b>Active Loans:</b></p>
+      
+      <p>{activeLoanText}</p>
+      
+      <p><b>Expected Premium Repay:</b></p>
 
-        <p className="center"><i>{loadingState}</i></p>
+      <p>{expectedPremiumRepayText}</p>
 
-        <OrdersTable orders={kernelOrders}/>
-        <Footer/>
-      </div>
-    )
-  }
+      <p><b>Current Reserve ROI:</b></p>
+
+      <p>{currentReserveROIText}</p>
+
+      <ReservesTable reserves={reserveBalanceData}/>
+
+      <OrdersTable orders={kernelOrders}/>
+      <Footer/>
+    </div>
+  )
 }
 
 export default App;
