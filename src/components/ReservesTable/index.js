@@ -20,8 +20,11 @@ function ReservesTable(props) {
       token : reserve.token,
       balance : (reserve.balance > 0) ? parseFloat(reserve.balance.toFixed(4)) : 0,
       lastUpdated : reserve.lastUpdated,
-      profits : (reserve.profits > 0) ? parseFloat(reserve.profits.toFixed(4)) : 0,
-      losses : (reserve.losses > 0) ? parseFloat(reserve.losses.toFixed(4)) : 0
+      activeLoanTotal : reserve.activeLoanTotal,
+      expectedPremiumRepay : reserve.expectedPremiumRepay,
+      currentROI : reserve.currentROI
+      // profits : (reserve.profits > 0) ? parseFloat(reserve.profits.toFixed(4)) : 0,
+      // losses : (reserve.losses > 0) ? parseFloat(reserve.losses.toFixed(4)) : 0
     })
   });
 
@@ -33,29 +36,35 @@ function ReservesTable(props) {
       accessor: "token"
     },
     {
+      Header: "Last Updated",
+      accessor: "lastUpdated",
+      className: "center"
+    },
+    {
       Header: "Balance",
       accessor: "balance",
       className: "right"
     },
     {
-      Header: "Last Updated",
-      accessor: "lastUpdated",
-      className: "center"
-    }/*,
-    {
-      Header: "Profits",
-      accessor: "profits",
+      Header: "Active Loan Total",
+      accessor: "activeLoanTotal",
       className: "right"
     },
     {
-      Header: "Losses",
-      accessor: "losses",
+      Header: "Expected Premium Repay",
+      accessor: "expectedPremiumRepay",
       className: "right"
-    }*/
+    },
+    {
+      Header: "Current ROI",
+      accessor: "currentROI",
+      className: "right"
+    }
   ];
 
   return (
-    <div className="ReservesTable">    
+    <div className="ReservesTable">   
+      <p><b>Reserves:</b></p> 
       <ReactTable
         data={data}
         columns={columns}

@@ -26,7 +26,7 @@ function OrdersTable(props) {
       principalToken : order.principalToken,
       principalAmount : order.principalAmount,
 
-      premium : (order.premium * 100).toFixed(2) + "%",
+      premium : order.premium + "%",
       status : order.status
     })
   });
@@ -118,6 +118,7 @@ function OrdersTable(props) {
 
   return (
     <div className="OrdersTable">    
+      <p><b>Loans:</b></p> 
       <ReactTable
         data={data}
         columns={columns}        

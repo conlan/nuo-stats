@@ -11,8 +11,8 @@ import Footer from "./components/Footer/index.js";
 const NuoConstants = require('./constants/Nuo.js');
 
 var kernelOrders = [];
-
 var reserveBalanceData = [];
+
 var reserveBalances = {};
 
 var currentProgress = "";
@@ -37,60 +37,27 @@ function TokenDecimals(address) {
   return NuoConstants.TOKEN_DATA[address].Decimals;
 }
 
-function UpdateActiveLoanAndRepayText() {
-	var loanBalanceSB = [];
-	var expectedPremiumRepaySB = [];
-  var currentReserveROISB = [];
-
+function UpdateActiveLoanAndRepayData() {
 	Object.keys(activeLoanBalances).forEach(function(token) {
-    var balance = activeLoanBalances[token].toFixed(4);
+    var activeLoanTotal = activeLoanBalances[token].toFixed(4);
 
-    if (balance > 0) {
-  		loanBalanceSB.push(balance);
-  		loanBalanceSB.push(" ");
-  		loanBalanceSB.push(token);
-  		loanBalanceSB.push(" - ");
+    if (activeLoanTotal > 0) {
+      reserveBalances[token].activeLoanTotal = activeLoanTotal;
     }
 
-    var repay = expectedPremiumRepays[token].toFixed(4);
+    var expectedPremiumRepay = expectedPremiumRepays[token].toFixed(4);
 
-    if (repay > 0) {
-  		expectedPremiumRepaySB.push(repay);
-  		expectedPremiumRepaySB.push(" ");
-  		expectedPremiumRepaySB.push(token);
-  		expectedPremiumRepaySB.push(" - " );
+    if (expectedPremiumRepay > 0) {
+      reserveBalances[token].expectedPremiumRepay = expectedPremiumRepay;
     }
 
-    var currentROI = repay / reserveBalances[token].toFixed(4);
+    var currentROI = expectedPremiumRepay / reserveBalances[token].balance.toFixed(4);
     currentROI = (currentROI * 100).toFixed(2);
 
-    console.log(reserveBalances);
-
-    if (currentROI > 0) {
-      currentReserveROISB.push(currentROI);
-      currentReserveROISB.push("%");
-      currentReserveROISB.push(" ");
-      currentReserveROISB.push(token);
-      currentReserveROISB.push(" - " ); 
+    if (expectedPremiumRepay > 0) {
+      reserveBalances[token].currentROI = currentROI + "%";
     }
-	});
-
-	// delete trailing comma if found
-	if (loanBalanceSB.length > 0) {
-		delete loanBalanceSB[loanBalanceSB.length - 1];		
-	}
-
-	if (expectedPremiumRepaySB.length > 0) {
-		delete expectedPremiumRepaySB[expectedPremiumRepaySB.length - 1];
-	}
-
-  if (currentReserveROISB.length > 0) {
-    delete currentReserveROISB[currentReserveROISB.length - 1];
-  }
-
-	activeLoanText = loanBalanceSB.join("");
-	expectedPremiumRepayText = expectedPremiumRepaySB.join("");
-  currentReserveROIText = currentReserveROISB.join("");
+  });
 }
 
 function ParseDate(timestamp) {
@@ -126,25 +93,28 @@ async function LoadReserves() {
     var reserveBalanceForToken = await reserveContract.methods.reserves(lastReserveUpdateTime, token).call();
     reserveBalanceForToken = reserveBalanceForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
 
-    var profitsForToken = await reserveContract.methods.profits(lastReserveUpdateTime, token).call(); 
-    profitsForToken = profitsForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
+    // var profitsForToken = await reserveContract.methods.profits(lastReserveUpdateTime, token).call(); 
+    // profitsForToken = profitsForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
 
-    var lossesForToken = await reserveContract.methods.losses(lastReserveUpdateTime, token).call(); 
-    lossesForToken = lossesForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
+    // var lossesForToken = await reserveContract.methods.losses(lastReserveUpdateTime, token).call(); 
+    // lossesForToken = lossesForToken / 10**NuoConstants.TOKEN_DATA[token].Decimals;
 
     var reserveBalanceObj = {
       token : NuoConstants.TOKEN_DATA[token].Symbol,
       balance : reserveBalanceForToken,
       lastUpdated : ParseDate(lastReserveUpdateTime),
       lastUpdatedTimestamp : lastReserveUpdateTime,
-      profits : profitsForToken,
-      losses : lossesForToken
+      activeLoanTotal : "-",
+      expectedPremiumRepay : "-",
+      currentROI : "-"
+      // profits : profitsForToken,
+      // losses : lossesForToken
     };
 
     console.log(reserveBalanceObj);
 
     reserveBalanceData.push(reserveBalanceObj);
-    reserveBalances[NuoConstants.TOKEN_DATA[token].Symbol] = reserveBalanceForToken;
+    reserveBalances[NuoConstants.TOKEN_DATA[token].Symbol] = reserveBalanceObj;
 
     app.setState({});
   }
@@ -188,13 +158,13 @@ async function LoadOpenOrders() {
     var principalToken = TokenSymbol(principalAddress);
     var principalDecimals = TokenDecimals(principalAddress);
     var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
-    var premium = (order["_premium"] / 1e17);
+    var premium = ((order["_premium"] / 1e17) * 100).toFixed(2);
 
     // initialize a default 0
     if ((principalToken in activeLoanBalances) == false) {
-		activeLoanBalances[principalToken] = 0;
-		expectedPremiumRepays[principalToken] = 0;
-	}
+      activeLoanBalances[principalToken] = 0;
+      expectedPremiumRepays[principalToken] = 0;
+    }
 
     kernelOrders.push({
       id : orderId,
@@ -238,20 +208,20 @@ async function LoadOrderStatuses() {
     if (isRepaid === false) {
       isDefaulted = await kernelContract.methods.isDefaulted(order.id).call();
     }
-	
-	order["status"] = isRepaid ? "Repaid" : isDefaulted ? "Default" : "Active";
 
-	// add this order to the active loans object if it hasn't been repaid or defaulted yet
-	if ((isRepaid == false) && (isDefaulted == false)) {		
-		activeLoanBalances[order.principalToken] = activeLoanBalances[order.principalToken] + order.principalAmount;
+    order["status"] = isRepaid ? "Repaid" : isDefaulted ? "Default" : "Active";
 
-		// add to the expected premium payout
-		var expectedPremium = order.premium * order.principalAmount;
+  	// add this order to the active loans object if it hasn't been repaid or defaulted yet
+  	if ((isRepaid == false) && (isDefaulted == false)) {		
+  		activeLoanBalances[order.principalToken] = activeLoanBalances[order.principalToken] + order.principalAmount;
 
-		expectedPremiumRepays[order.principalToken] = expectedPremiumRepays[order.principalToken] + expectedPremium;
+  		// add to the expected premium payout
+  		var expectedPremium = order.premium / 100 * order.principalAmount;
 
-		UpdateActiveLoanAndRepayText();
-	}
+  		expectedPremiumRepays[order.principalToken] = expectedPremiumRepays[order.principalToken] + expectedPremium;
+
+  		UpdateActiveLoanAndRepayData();
+  	}
 
     app.setState({});
   }
@@ -283,26 +253,14 @@ function App(props) {
 
   return (
     <div>
-      <p><i>{loadingState}</i></p>
+    <p><i>{loadingState}</i></p>
 
-      <p><b>Active Loans:</b></p>
-      
-      <p>{activeLoanText}</p>
-      
-      <p><b>Expected Premium Repay:</b></p>
+    <ReservesTable reserves={reserveBalanceData}/>
 
-      <p>{expectedPremiumRepayText}</p>
-
-      <p><b>Current Reserve ROI:</b></p>
-
-      <p>{currentReserveROIText}</p>
-
-      <ReservesTable reserves={reserveBalanceData}/>
-
-      <OrdersTable orders={kernelOrders}/>
-      <Footer/>
+    <OrdersTable orders={kernelOrders}/>
+    <Footer/>
     </div>
-  )
+    )
 }
 
 export default App;
