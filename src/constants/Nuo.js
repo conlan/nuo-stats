@@ -37,6 +37,10 @@ module.exports = {
   	"0xdd974D5C2e2928deA5F71b9825b8b646686BD200" : {
   		Symbol : "KNC",
   		Decimals : 18
+  	},
+  	"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" : {
+  		Symbol : "USDC",
+  		Decimals : 6
   	}
   }
 }

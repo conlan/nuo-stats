@@ -6,6 +6,8 @@ import "react-table/react-table.css";
 
 import "./ReservesTable.css";
 
+const NuoConstants = require('../../constants/Nuo.js');
+
 var app;
 
 function ReservesTable(props) {
@@ -68,7 +70,7 @@ function ReservesTable(props) {
       <ReactTable
         data={data}
         columns={columns}
-        defaultPageSize={8}
+        defaultPageSize={Object.keys(NuoConstants.TOKEN_DATA).length}
         showPageSizeOptions={false}
         showPagination={false}
         className="-striped"

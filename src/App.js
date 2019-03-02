@@ -51,8 +51,12 @@ function UpdateActiveLoanAndRepayData() {
       reserveBalances[token].expectedPremiumRepay = expectedPremiumRepay;
     }
 
-    var currentROI = expectedPremiumRepay / reserveBalances[token].balance.toFixed(4);
-    currentROI = (currentROI * 100).toFixed(2);
+    var currentROI = 0;
+
+    if (reserveBalances[token].balance > 0) {
+	    currentROI = expectedPremiumRepay / reserveBalances[token].balance.toFixed(4);
+	    currentROI = (currentROI * 100).toFixed(2);
+	}
 
     if (expectedPremiumRepay > 0) {
       reserveBalances[token].currentROI = currentROI + "%";
@@ -144,21 +148,27 @@ async function LoadOpenOrders() {
 
     currentProgress = "(" + i + " / " + allOrdersRaw.length + ")";
 
-    var createdTimestamp = order["_createdTimestamp"];    
-    var creationDate = ParseDate(createdTimestamp);
+    try {
+	    var createdTimestamp = order["_createdTimestamp"];    
+	    var creationDate = ParseDate(createdTimestamp);
 
-    var expiredTimestamp = order["_expirationTimestamp"];    
-    var expiredDate = ParseDate(expiredTimestamp);
+	    var expiredTimestamp = order["_expirationTimestamp"];    
+	    var expiredDate = ParseDate(expiredTimestamp);
 
-    var collateralAddress = order["_collateralToken"];
-    var collateralDecimals = TokenDecimals(collateralAddress)
-    var collateralAmount = parseFloat((order["_collateralAmount"] / 10**collateralDecimals).toFixed(4));    
-    
-    var principalAddress = order["_principalToken"];
-    var principalToken = TokenSymbol(principalAddress);
-    var principalDecimals = TokenDecimals(principalAddress);
-    var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
-    var premium = ((order["_premium"] / 1e17) * 100).toFixed(2);
+	    var collateralAddress = order["_collateralToken"];
+	    var collateralDecimals = TokenDecimals(collateralAddress)
+	    var collateralAmount = parseFloat((order["_collateralAmount"] / 10**collateralDecimals).toFixed(4));    
+	    
+	    var principalAddress = order["_principalToken"];
+	    var principalToken = TokenSymbol(principalAddress);
+	    var principalDecimals = TokenDecimals(principalAddress);
+	    var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
+	    var premium = ((order["_premium"] / 1e17) * 100).toFixed(2);
+	} catch (error) {
+		// skip if we encounter a token not yet supported
+		console.log(error);
+		continue;
+	}
 
     // initialize a default 0
     if ((principalToken in activeLoanBalances) == false) {
