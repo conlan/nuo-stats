@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/3.6.3/workbox-sw.js");
 
 importScripts(
-  "/nuo-stats/precache-manifest.ce4bbfa4a227d6a42dfb6bba453f7d97.js"
+  "/nuo-stats/precache-manifest.3ded1624185b9a5899ce5c221b88ddc3.js"
 );
 
 workbox.clientsClaim();
