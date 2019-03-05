@@ -6,19 +6,25 @@ import "react-table/react-table.css";
 
 import "./TradeOrdersTable.css";
 
-var app;
+import { formatCreatedDate } from "../../util.js";
 
+var app;
 
 function TradeOrdersTable(props) {
   app = props.app;
 
   const data = [];
 
-  props.orders.forEach(order => {
+  var orders;
+  orders = props.orders.sort((a,b) => (a.createdTimestamp < b.createdTimestamp) ? 1 : ((b.createdTimestamp < a.createdTimestamp) ? -1 : 0));
+
+  orders.forEach(order => {
+    var createdTime = formatCreatedDate(order.createdTime, order.createdTimestamp);
     data.push({
+      id : order.id,
       account : order.account,
       user : order.user,
-      created : order.createdTime,
+      created : createdTime,
       expires : order.expirationTime,
       
       collateralToken : order.collateralToken,
@@ -27,10 +33,9 @@ function TradeOrdersTable(props) {
       principalToken : order.principalToken,
       principalAmount : order.principalAmount,
 
+      tenure : order.tenure,
+
       tradeToken : order.tradeToken,
-      stopLoss : order.stopLoss,
-      stopProfit : order.stopProfit,
-      closingTradeCurrency: order.closingTradeCurrency,
 
       premium : order.premium + "%",
       status : order.status
@@ -40,6 +45,11 @@ function TradeOrdersTable(props) {
   var etherScanPrefix = "https://etherscan.com/address/";
 
   const columns = [
+    {
+      Header: "Order ID",
+      accessor: "id",
+      maxWidth: 100
+    },
     {
       Header: "User",
       accessor: "user",
@@ -88,16 +98,8 @@ function TradeOrdersTable(props) {
       accessor: "tradeToken"
     },
     {
-      Header: "Stop Loss",
-      accessor: "stopLoss"
-    },
-    {
-      Header: "Stop Profit",
-      accessor: "stopProfit"
-    },
-    {
-      Header: "Closing Trade Token",
-      accessor: "closingTradeToken"
+      Header: "Tenure(D)",
+      accessor: "tenure"
     },
     {
       Header: "Premium",
@@ -119,7 +121,7 @@ function TradeOrdersTable(props) {
           <span
             style={{
               color:
-                row.value === "Repaid"
+                row.value === "Liquidated"
                   ? "#3498db"
                   : row.value === "Active"
                   ? "#62cb31"
@@ -140,7 +142,7 @@ function TradeOrdersTable(props) {
 
   return (
     <div className="TradeOrdersTable">    
-      <p><b>Trades:</b></p> 
+      <p><b>Trades: {props.orders.length}</b></p> 
       <ReactTable
         data={data}
         columns={columns}        

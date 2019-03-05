@@ -4,6 +4,8 @@ import ReactTable from "react-table";
 
 import "react-table/react-table.css";
 
+import { formatCreatedDate } from "../../util.js";
+
 import "./OrdersTable.css";
 
 var app;
@@ -13,11 +15,16 @@ function OrdersTable(props) {
 
   const data = [];
 
-  props.orders.forEach(order => {
+  var orders;
+  orders = props.orders.sort((a,b) => (a.createdTimestamp < b.createdTimestamp) ? 1 : ((b.createdTimestamp < a.createdTimestamp) ? -1 : 0));
+
+  orders.forEach(order => {
+    var createdTime = formatCreatedDate(order.createdTime, order.createdTimestamp);
     data.push({
+      id : order.id,
       account : order.account,
       user : order.user,
-      created : order.createdTime,
+      created : createdTime,
       expires : order.expirationTime,
       
       collateralToken : order.collateralToken,
@@ -26,6 +33,8 @@ function OrdersTable(props) {
       principalToken : order.principalToken,
       principalAmount : order.principalAmount,
 
+      tenure : order.tenure,
+      
       premium : order.premium + "%",
       status : order.status
     })
@@ -34,6 +43,11 @@ function OrdersTable(props) {
   var etherScanPrefix = "https://etherscan.com/address/";
 
   const columns = [
+    {
+      Header: "Order ID",
+      accessor: "id",
+      maxWidth: 100
+    },
     {
       Header: "User",
       accessor: "user",
@@ -89,6 +103,10 @@ function OrdersTable(props) {
       className: "center"
     },
     {
+      Header: "Tenure(D)",
+      accessor: "tenure"
+    },
+    {
       Header: "Status",
       accessor: "status",
       maxWidth: 100,
@@ -118,7 +136,7 @@ function OrdersTable(props) {
 
   return (
     <div className="OrdersTable">    
-      <p><b>Loans:</b></p> 
+      <p><b>Loans: {props.orders.length}</b></p> 
       <ReactTable
         data={data}
         columns={columns}        

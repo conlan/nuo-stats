@@ -6,6 +6,8 @@ import "react-table/react-table.css";
 
 import "./ReservesTable.css";
 
+import { formatCreatedDate } from "../../util.js";
+
 const NuoConstants = require('../../constants/Nuo.js');
 
 var app;
@@ -13,15 +15,17 @@ var app;
 function ReservesTable(props) {
   app = props.app;
 
-  var reserves = props.reserves;
-
   const data = [];
 
+  var reserves;
+  reserves = props.reserves.sort((a,b) => (a.currentROI < b.currentROI) ? 1 : ((b.currentROI < a.currentROI) ? -1 : 0));
+
   reserves.forEach(reserve => {
+    var lastUpdatedTime = formatCreatedDate(reserve.lastUpdated, reserve.lastUpdatedTimestamp);
     data.push({
       token : reserve.token,
       balance : (reserve.balance > 0) ? parseFloat(reserve.balance.toFixed(4)) : 0,
-      lastUpdated : reserve.lastUpdated,
+      lastUpdated : lastUpdatedTime,
       activeLoanTotal : reserve.activeLoanTotal,
       expectedPremiumRepay : reserve.expectedPremiumRepay,
       currentROI : reserve.currentROI
@@ -66,7 +70,7 @@ function ReservesTable(props) {
 
   return (
     <div className="ReservesTable">   
-      <p><b>Reserves:</b></p> 
+      <p><b>Reserves: {props.reserves.length}</b></p> 
       <ReactTable
         data={data}
         columns={columns}
