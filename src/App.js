@@ -163,7 +163,11 @@ async function LoadOpenOrders() {
 	    var principalToken = TokenSymbol(principalAddress);
 	    var principalDecimals = TokenDecimals(principalAddress);
 	    var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
-	    var premium = ((order["_premium"] / 1e17) * 100).toFixed(2);
+
+      // special case handling for a UI bug -- use correct divisor after certain timestamp
+      var premiumDivisor = (createdTimestamp >= 1551596924) ? 1e18 : 1e17;
+
+	    var premium = ((order["_premium"] / premiumDivisor) * 100).toFixed(2);
 	} catch (error) {
 		// skip if we encounter a token not yet supported
 		console.log(error);
