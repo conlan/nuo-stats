@@ -133,9 +133,9 @@ async function LoadLoanOrders() {
 
 		loadingState = "(Fetching loan details " + (i + 1)+ " / " + allOrderIds.length + ")";
 
-		var order = await kernelContract.methods.getOrder(orderId).call();
-
 		try {
+			var order = await kernelContract.methods.getOrder(orderId).call();
+			
 			var createdTimestamp = order["_createdTimestamp"];    
 			var creationDate = ParseDate(createdTimestamp);
 
@@ -217,11 +217,11 @@ async function LoadTradeOrders(callback) {
 
 		loadingState = "(Fetching trade details " + (i + 1)+ " / " + allOrderIds.length + ")";
 
-		var order = await mkernelContract.methods.getOrder(orderId).call();
-
-		var trade = await mkernelContract.methods.getTrade(orderId).call();
-
 		try {
+			var order = await mkernelContract.methods.getOrder(orderId).call();
+
+			var trade = await mkernelContract.methods.getTrade(orderId).call();
+
 			var createdTimestamp = order["_createdTimestamp"];    
 			var creationDate = ParseDate(createdTimestamp);
 
