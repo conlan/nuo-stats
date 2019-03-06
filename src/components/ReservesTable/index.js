@@ -10,10 +10,10 @@ import { formatCreatedDate } from "../../util.js";
 
 const NuoConstants = require('../../constants/Nuo.js');
 
-var app;
+// var app;
 
 function ReservesTable(props) {
-  app = props.app;
+  // app = props.app;
 
   const data = [];
 
@@ -34,7 +34,7 @@ function ReservesTable(props) {
     })
   });
 
-  var etherScanPrefix = "https://etherscan.com/address/";
+  // var etherScanPrefix = "https://etherscan.com/address/";
 
   const columns = [
     {

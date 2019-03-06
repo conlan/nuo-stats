@@ -8,10 +8,10 @@ import "./TradeOrdersTable.css";
 
 import { formatCreatedDate } from "../../util.js";
 
-var app;
+// var app;
 
 function TradeOrdersTable(props) {
-  app = props.app;
+  // app = props.app;
 
   const data = [];
 
@@ -145,7 +145,8 @@ function TradeOrdersTable(props) {
       <p><b>Trades: {props.orders.length}</b></p> 
       <ReactTable
         data={data}
-        columns={columns}        
+        columns={columns}      
+        defaultPageSize={10}  
         showPageSizeOptions={showPageSizeOptions}
         className="-striped"
         resizable={false}
