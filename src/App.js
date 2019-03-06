@@ -144,7 +144,6 @@ async function LoadOpenOrders() {
 
   var i = 0;
   allOrdersRaw.forEach(async orderId => {
-    var orderId = allOrdersRaw[i];
 
     loadingState = "(Fetching loan details " + (i + 1)+ " / " + allOrdersRaw.length + ")";
 
