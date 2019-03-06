@@ -4,13 +4,13 @@ import ReactTable from "react-table";
 
 import "react-table/react-table.css";
 
-import { formatCreatedDate } from "../../util.js";
+import "./TradeOrdersTable.css";
 
-import "./OrdersTable.css";
+import { formatCreatedDate } from "../../util.js";
 
 var app;
 
-function OrdersTable(props) {
+function TradeOrdersTable(props) {
   app = props.app;
 
   const data = [];
@@ -34,7 +34,9 @@ function OrdersTable(props) {
       principalAmount : order.principalAmount,
 
       tenure : order.tenure,
-      
+
+      tradeToken : order.tradeToken,
+
       premium : order.premium + "%",
       status : order.status
     })
@@ -88,8 +90,16 @@ function OrdersTable(props) {
       className: "right",
     },
     {
-      Header: "Token",
+      Header: "Principal Token",
       accessor: "principalToken"
+    },
+    {
+      Header: "Trade Token",
+      accessor: "tradeToken"
+    },
+    {
+      Header: "Tenure(D)",
+      accessor: "tenure"
     },
     {
       Header: "Premium",
@@ -103,10 +113,6 @@ function OrdersTable(props) {
       className: "center"
     },
     {
-      Header: "Tenure(D)",
-      accessor: "tenure"
-    },
-    {
       Header: "Status",
       accessor: "status",
       maxWidth: 100,
@@ -115,7 +121,7 @@ function OrdersTable(props) {
           <span
             style={{
               color:
-                row.value === "Repaid"
+                row.value === "Liquidated"
                   ? "#3498db"
                   : row.value === "Active"
                   ? "#62cb31"
@@ -135,8 +141,8 @@ function OrdersTable(props) {
   var showPageSizeOptions = false;
 
   return (
-    <div className="OrdersTable">    
-      <p><b>Loans: {props.orders.length}</b></p> 
+    <div className="TradeOrdersTable">    
+      <p><b>Trades: {props.orders.length}</b></p> 
       <ReactTable
         data={data}
         columns={columns}        
@@ -147,5 +153,4 @@ function OrdersTable(props) {
     </div>
   );
 }
-
-export default OrdersTable;
+export default TradeOrdersTable;

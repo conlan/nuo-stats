@@ -4,6 +4,7 @@ import './App.css';
 import { useWeb3Context } from 'web3-react'
 
 import OrdersTable from "./components/OrdersTable/index.js";
+import TradeOrdersTable from "./components/TradeOrdersTable/index.js";
 import ReservesTable from "./components/ReservesTable/index.js";
 
 import Footer from "./components/Footer/index.js";
@@ -11,6 +12,7 @@ import Footer from "./components/Footer/index.js";
 const NuoConstants = require('./constants/Nuo.js');
 
 var kernelOrders = [];
+var mkernelOrders = [];
 var reserveBalanceData = [];
 
 var reserveBalances = {};
@@ -86,9 +88,8 @@ async function LoadReserves() {
   var keys = Object.keys(NuoConstants.TOKEN_DATA);
 
   reserveBalanceData = [];
-
-  for (var i = 0; i < keys.length; i++) {
-    var token = keys[i];
+  var i = 0;
+  keys.forEach(async token => {
 
     loadingState = "(Fetching reserve details for " + TokenSymbol(token) + ")";
 
@@ -121,10 +122,12 @@ async function LoadReserves() {
     reserveBalances[NuoConstants.TOKEN_DATA[token].Symbol] = reserveBalanceObj;
 
     app.setState({});
-  }
+    i++;
+  });
 
   app.setState({});
 
+  LoadTradeOrders();
   LoadOpenOrders();
 }
 
@@ -139,8 +142,8 @@ async function LoadOpenOrders() {
 
   kernelOrders = [];
 
-  for (var i = 0; i < allOrdersRaw.length; i++) {
-    var orderId = allOrdersRaw[i];
+  var i = 0;
+  allOrdersRaw.forEach(async orderId => {
 
     loadingState = "(Fetching loan details " + (i + 1)+ " / " + allOrdersRaw.length + ")";
 
@@ -153,7 +156,9 @@ async function LoadOpenOrders() {
 	    var creationDate = ParseDate(createdTimestamp);
 
 	    var expiredTimestamp = order["_expirationTimestamp"];    
-	    var expiredDate = ParseDate(expiredTimestamp);
+      var expiredDate = ParseDate(expiredTimestamp);
+      
+      var tenure = (expiredTimestamp - createdTimestamp)/86400;
 
 	    var collateralAddress = order["_collateralToken"];
 	    var collateralDecimals = TokenDecimals(collateralAddress)
@@ -171,7 +176,7 @@ async function LoadOpenOrders() {
 	} catch (error) {
 		// skip if we encounter a token not yet supported
 		console.log(error);
-		continue;
+		// continue;
 	}
 
     // initialize a default 0
@@ -187,11 +192,13 @@ async function LoadOpenOrders() {
       collateralAmount : collateralAmount,
       collateralToken : TokenSymbol(collateralAddress),
       createdTime : creationDate,
+      createdTimestamp : createdTimestamp,
       expirationTime : expiredDate,
       rawExpirationTime : expiredTimestamp,
       premium : premium,
       principalAmount : principalAmount,     
       principalToken : principalToken,
+      tenure : tenure,
       status : "-",
       isActive : false
     });
@@ -199,34 +206,137 @@ async function LoadOpenOrders() {
     app.setState({});
 
     console.log(order);
-  }
+    i++;
+    if(i == allOrdersRaw.length-1)
+      await LoadOrderStatuses(NuoConstants.LOAN_TYPE, kernelOrders, NuoConstants.KERNEL_ABI, NuoConstants.KERNEL_ADDRESS);
+  });
+
+  loadingState = "";
+
+  app.setState({});  
+}
+
+async function LoadTradeOrders() {
+  var mkernelContract = new web3.eth.Contract(NuoConstants.MKERNEL_ABI, NuoConstants.MKERNEL_ADDRESS);
+
+  var allOrdersRaw = await mkernelContract.methods.getAllOrders().call();
+
+  allOrdersRaw.reverse();
+
+  console.log("Received " + allOrdersRaw.length + " orders");
+
+  mkernelOrders = [];
+
+  var i = 0;
+  allOrdersRaw.forEach(async orderId => {
+
+    loadingState = "(Fetching loan details " + (i + 1)+ " / " + allOrdersRaw.length + ")";
+
+    var order = await mkernelContract.methods.getOrder(orderId).call();
+    var trade = await mkernelContract.methods.getTrade(orderId).call();
+
+    currentProgress = "(" + i + " / " + allOrdersRaw.length + ")";
+
+    try {
+	    var createdTimestamp = order["_createdTimestamp"];    
+	    var creationDate = ParseDate(createdTimestamp);
+
+	    var expiredTimestamp = order["_expirationTimestamp"];
+      var expiredDate = ParseDate(expiredTimestamp);
+      
+      var tenure = (expiredTimestamp - createdTimestamp)/86400;
+
+	    var collateralAddress = order["_collateralToken"];
+	    var collateralDecimals = TokenDecimals(collateralAddress)
+	    var collateralAmount = parseFloat((order["_collateralAmount"] / 10**collateralDecimals).toFixed(4));    
+	    
+	    var principalAddress = order["_principalToken"];
+	    var principalToken = TokenSymbol(principalAddress);
+	    var principalDecimals = TokenDecimals(principalAddress);
+      var principalAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
+      
+	    var tradeAddress = trade;//["_tradeToken"];
+	    var tradeToken = TokenSymbol(tradeAddress);
+      var tradeAmount = parseFloat((order["_principalAmount"] / 10**principalDecimals).toFixed(4));
+
+      // var stopLoss = trade["_stopLoss"];
+      // var stopProfit = trade["_stopProfit"];
+      // var closingTradeToken = trade["_closingToken"];
+      
+      var premium = ((order["_premium"] / order["_principalAmount"]) * 100).toFixed(2);
+
+	} catch (error) {
+		// skip if we encounter a token not yet supported
+		console.log(error);
+		// continue;
+	}
+
+    // initialize a default 0
+    if ((principalToken in activeLoanBalances) == false) {
+      activeLoanBalances[principalToken] = 0;
+      expectedPremiumRepays[principalToken] = 0;
+    }
+
+    mkernelOrders.push({
+      id : orderId,
+      account : order["_account"],
+      user : order["_byUser"],
+      collateralAmount : collateralAmount,
+      collateralToken : TokenSymbol(collateralAddress),
+      createdTime : creationDate,
+      createdTimestamp : createdTimestamp,
+      expirationTime : expiredDate,
+      rawExpirationTime : expiredTimestamp,
+      premium : premium,
+      principalAmount : principalAmount,     
+      principalToken : principalToken,
+      tradeAmount : tradeAmount,
+      tradeToken : tradeToken,
+      // stopLoss : stopLoss,
+      // stopProfit : stopProfit,
+      // closingTradeToken : closingTradeToken,
+      tenure : tenure,
+      status : "-",
+      isActive : false
+    });
+
+    app.setState({});
+
+    console.log(order, trade);
+    i++;
+    if(i == allOrdersRaw.length-1)
+      await LoadOrderStatuses(NuoConstants.TRADE_TYPE, mkernelOrders, NuoConstants.MKERNEL_ABI, NuoConstants.MKERNEL_ADDRESS);
+  });
 
   loadingState = "";
 
   app.setState({});
-
-  LoadOrderStatuses();
 }
 
-async function LoadOrderStatuses() {
-  var kernelContract = new web3.eth.Contract(NuoConstants.KERNEL_ABI, NuoConstants.KERNEL_ADDRESS);
+async function LoadOrderStatuses(type, orders, abi, contractAddress) {
+  var kernelContract = new web3.eth.Contract(abi, contractAddress);
 
-  for (var i = 0; i < kernelOrders.length; i++) {
-    var order = kernelOrders[i];
-
-    loadingState = "(Fetching loan status " + (i + 1)+ " / " + kernelOrders.length + ")";
+  var i = 0;
+  orders.forEach(async order => {
     
-    let isRepaid = await kernelContract.methods.isRepaid(order.id).call();
+    loadingState = "(Fetching order status " + (i + 1)+ " / " + orders.length + ")";
+    
+    let isRepaid = false;
+    if(type === NuoConstants.LOAN_TYPE)
+      isRepaid = await kernelContract.methods.isRepaid(order.id).call();
+    let isLiquidated = false;
     let isDefaulted = false;
+    if(type === NuoConstants.TRADE_TYPE)
+      isLiquidated = await kernelContract.methods.isLiquidated(order.id).call();
 
     if (isRepaid === false) {
       isDefaulted = await kernelContract.methods.isDefaulted(order.id).call();
     }
 
-    order["status"] = isRepaid ? "Repaid" : isDefaulted ? "Default" : "Active";
+    order["status"] = isRepaid ? "Repaid" : isLiquidated ? "Liquidated" : isDefaulted ? "Default" : "Active";
 
   	// add this order to the active loans object if it hasn't been repaid or defaulted yet
-  	if ((isRepaid == false) && (isDefaulted == false)) {		
+  	if ((isRepaid == false) && (isDefaulted == false) && (isLiquidated == false)) {		
   		activeLoanBalances[order.principalToken] = activeLoanBalances[order.principalToken] + order.principalAmount;
 
   		// add to the expected premium payout
@@ -238,7 +348,8 @@ async function LoadOrderStatuses() {
   	}
 
     app.setState({});
-  }
+    i++;
+  });
 
   loadingState = "";
 
@@ -271,6 +382,7 @@ function App(props) {
 
     <ReservesTable reserves={reserveBalanceData}/>
 
+    <TradeOrdersTable orders={mkernelOrders}/>
     <OrdersTable orders={kernelOrders}/>
     <Footer/>
     </div>
